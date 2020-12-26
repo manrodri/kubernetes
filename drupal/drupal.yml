@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: drupal
+  name: drupal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drupal
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: drupal
+    spec:
+      volumes:
+      - name: vol-drupal
+        persistentVolumeClaim:
+          claimName: drupal-pvc
+      initContainers:
+        - name: nit-sites-volume
+          image: drupal:8.6
+          volumeMounts:
+          - name: vol-drupal
+            mountPath: /data
+          command:  [ "/bin/bash", "-c" ]
+          args: [ 'cp -r /var/www/html/sites/ /data/; chown www-data:www-data /data/ -R' ]
+
+      containers:
+      - image: drupal:8.6
+        name: drupal
+        volumeMounts:
+        - name: vol-drupal
+          mountPath: /var/www/html/modules
+          subPath: modules
+        - name: vol-drupal
+          mountPath: /var/www/html/profiles
+          subPath: profiles
+        - name: vol-drupal
+          mountPath: /var/www/html/sites
+          subPath: sites
+        - name: vol-drupal
+          mountPath: /var/www/html/themes
+          subPath: themes
+        resources: {}
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drupal-service
+spec:
+  type: NodePort
+  selector:
+    app: drupal
+  ports:
+      # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
+    - port: 80
+      targetPort: 80
+      # Optional field
+      # By default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
+      nodePort: 30095
